@@ -1,0 +1,16 @@
+*/obj/Debug/*
+*/obj/Release/*
+*/obj/RelWithDebInfo/*
+*/obj/MinSizeRel/*
+*.cache
+CMakeLists.txt.user
+*~$*.*
+*.user
+*.swp
+*.rej
+*.orig
+.vs
+**/deployment
+**/xcuserdata
+*/Debug/*
+*/Release/*
