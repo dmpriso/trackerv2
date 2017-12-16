@@ -30,12 +30,12 @@ void MagCalib::putCalibValue(float fDegree, float x, float y)
 	float heading0 = normalizeAngle360(heading - fDegree);
 	float heading0Rad = deg2rad(heading0);
 
-	Serial.print("Calib Heading: ");
-	Serial.print(heading);
-	Serial.print(" -> ");
-	Serial.print(heading0);
-	Serial.print(" ");
-	Serial.println(heading0Rad);
+	//Serial.print(F("Calib Heading: "));
+	//Serial.print(heading);
+	//Serial.print(F(" -> "));
+	//Serial.print(heading0);
+	//Serial.print(F(" "));
+	//Serial.println(heading0Rad);
 
 	// add to sum vector
 	this->m_fHeading0X += cos(heading0Rad);
@@ -47,10 +47,10 @@ float MagCalib::finishCalib()
 	float fHeading0Rad = atan2(this->m_fHeading0Y, this->m_fHeading0X);
 	float fHeading0 = rad2deg(fHeading0Rad);
 
-	Serial.print("Calib FINAL Heading0: ");
-	Serial.print(fHeading0);
-	Serial.print(" ");
-	Serial.println(fHeading0Rad);
+	//Serial.print(F("Calib FINAL Heading0: "));
+	//Serial.print(fHeading0);
+	//Serial.print(F(" "));
+	//Serial.println(fHeading0Rad);
 
 	return fHeading0;
 }

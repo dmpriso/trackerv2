@@ -27,6 +27,27 @@
     <ClCompile Include="tools.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="bluetooth.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="limited_string.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stream_processor.cpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="const_string.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mavlink_processor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MPU_Small.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="buzzer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="motor.h">
@@ -36,6 +57,36 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="mag_calib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="bluetooth.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stream_processor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="limited_string.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="callback.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="const_string.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="state_machine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="__vm\.TrackerV2.vsarduino.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mavlink_processor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MPU_Small.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="buzzer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

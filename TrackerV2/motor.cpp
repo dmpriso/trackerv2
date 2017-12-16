@@ -7,9 +7,9 @@ TrackerMotor::TrackerMotor(int stepPin,
 	int stepsFor360Deg,
 	SetupTimerCb cbSetupTimer,
 	PositionCb cbPosition)
-	: m_stepPin(stepPin),
+	: m_stepsFor360Deg(stepsFor360Deg),
+	m_stepPin(stepPin),
 	m_dirPin(dirPin),
-	m_stepsFor360Deg(stepsFor360Deg),
 	m_cbSetupTimer(cbSetupTimer),
 	m_cbPosition(cbPosition)
 {
