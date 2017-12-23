@@ -16,6 +16,7 @@
 #include "limited_string.h"
 #include "mavlink_processor.h"
 #include "buzzer.h"
+#include "pos_avg.h"
 #include "pos_calc.h"
 
 #define BT_CONNECT_PIN 12
@@ -70,6 +71,7 @@ MavlinkProcessor mavlink;
 HardwareSerial& gps = Serial2;
 char buffer[85];
 MicroNMEA nmea(buffer, sizeof(buffer));
+PositionAverager<16> gps_avg;
 Buzzer buzzer(BUZZER_PIN);
 Servo tilt;
 
@@ -389,16 +391,41 @@ void loop()
 		{
 			if (nmea.isValid())
 			{
-				status.gps_lat = (float)nmea.getLatitude() / 1000000.0f;
-				status.gps_lon = (float)nmea.getLongitude() / 1000000.0f;
-				long alt;
-				if (nmea.getAltitude(alt))
-					status.gps_alt = (float)alt / 1000.0f;
-				status.gps_has_fix = true;
+				static float last_gps_lat = 0.f;
+				static float last_gps_lon = 0.f;
 
-				fMagDeclination = PosCalc::getMagDeclination(status.gps_lat, status.gps_lon);
-				Serial.print("MAG Declination: ");
-				Serial.println(fMagDeclination);
+				auto gps_lat = (float)nmea.getLatitude() / 1000000.0f;
+				auto gps_lon = (float)nmea.getLongitude() / 1000000.0f;
+				if (gps_lat != last_gps_lat || gps_lon != last_gps_lon)
+				{
+					last_gps_lat = gps_lat;
+					last_gps_lon = gps_lon;
+					Serial.print("Raw GPS lat: ");
+					Serial.print(gps_lat, 8);
+					Serial.print(" lon: ");
+					Serial.println(gps_lon, 8);
+
+					gps_avg.put(gps_lat, gps_lon);
+					if (gps_avg.get(gps_lat, gps_lon))
+					{
+						Serial.print("Flt GPS lat: ");
+						Serial.print(gps_lat, 8);
+						Serial.print(" lon: ");
+						Serial.println(gps_lon, 8);
+
+						status.gps_lat = gps_lat;
+						status.gps_lon = gps_lon;
+
+						long alt;
+						if (nmea.getAltitude(alt))
+							status.gps_alt = (float)alt / 1000.0f;
+						status.gps_has_fix = true;
+
+						fMagDeclination = PosCalc::getMagDeclination(status.gps_lat, status.gps_lon);
+						Serial.print("MAG Declination: ");
+						Serial.println(fMagDeclination);
+					}
+				}
 			}
 		}
 	}
