@@ -1,70 +1,37 @@
 #ifndef MOTOR_H
 #define MOTOR_H
 
-class TrackerMotor
+#include <Arduino.h>
+#include <Encoder.h>
+#include <Filters.h>
+
+class Motor
 {
 public:
-	// callback must call onTimerElapsed once after iAfterMs have elapsed.
-	typedef void(*SetupTimerCb)(int iAfterMs);
-
-	// will be called for every position change
-	typedef void(*PositionCb)(float fPositionDeg);
-
-public:
-	TrackerMotor(int stepPin, 
-		int dirPin, 
-		int stepsFor360Deg, 
-		SetupTimerCb cbSetupTimer,
-		PositionCb cbPosition = nullptr);
+	Motor(uint8_t pwm_pin,
+		uint8_t dir_pin,
+		uint8_t enc_pin_1,
+		uint8_t enc_pin_2);
 
 public:
-	void setPosition(int deg);
-	void setContinuousSpeed(int degSec);
+	/**
+	 * @param speedPermille Speed in permille. Can be positive or negative.
+	 */
+	void setSpeed(int speedPermille);
+	int read();
 
-public:
-	void onTimerElapsed();
+	void update();
 
 private:
-	void _continue();
-	void step(int durationMs);
-
-	inline int degToStep(int deg)
-	{
-		return (int)((long)deg * (long)this->m_stepsFor360Deg / 360l);
-	}
-
-	inline int stepToDeg(int step)
-	{
-		return (int)((long)step * 360l / (long)this->m_stepsFor360Deg);
-	}
-
-	inline float stepToDegF(int step)
-	{
-		return (float)step * 360.f / (float)this->m_stepsFor360Deg;
-	}
+	void internalSetSpeed(float speedPermille);
 
 private:
-	const int m_stepsFor360Deg;
-	const int m_stepPin;
-	const int m_dirPin;
+	Encoder m_enc;
+	const uint8_t m_pwm_pin;
+	const uint8_t m_dir_pin;
+	FilterOnePole lpf;
+	float f_input = 0.f;
 
-	const SetupTimerCb m_cbSetupTimer;
-	const PositionCb m_cbPosition;
-
-	int m_currentStepPos = 0;
-	int m_targetStepPos = 0;
-	int m_stepsPerSec = 0;
-
-	int m_iMinStepsPerSec = 20;
-	int m_iMaxStepsPerSec = 200;
-
-	int m_inStep = 0;
-	int m_iStepDurationMs = 0;
-	int m_iDir = 0;
-
-	int m_iFilteredTargetSpeed = 0;
 };
 
 #endif
-
-

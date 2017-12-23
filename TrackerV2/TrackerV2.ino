@@ -8,12 +8,15 @@
 
 #include "MPU_Small.h"
 #include "motor.h"
+#include "motor_with_speed_ctrl.h"
+#include "rotor_with_pos_ctrl.h"
 #include "mag_calib.h"
 #include "bluetooth.h"
 #include "stream_processor.h"
 #include "limited_string.h"
 #include "mavlink_processor.h"
 #include "buzzer.h"
+#include "pos_calc.h"
 
 #define BT_CONNECT_PIN 12
 #define BT_BINDSWITCH_PIN 11
@@ -34,7 +37,30 @@
 #define VSENS_FACTOR 6.0f
 #define COMPASS_ROTATION 90.0f
 
+#define PWM_PIN 3
+#define DIR_PIN 2
+#define ENC_PIN_1 6
+#define ENC_PIN_2 4
+#define ENC_FACTOR (3591.84 * 3. / 2.)
 
+#define P_SPEED 4.
+#define I_SPEED 2.
+#define D_SPEED .2
+
+#define P_POS 1.4
+#define I_POS 0.01
+#define D_POS .001
+
+void onMotorPosition(float iPosition);
+
+Motor motor(PWM_PIN, DIR_PIN, ENC_PIN_1, ENC_PIN_2);
+MotorWithSpeedCtrl smotor(motor, P_SPEED, I_SPEED, D_SPEED);
+RotorWithPosCtrl rotor(smotor, P_POS, I_POS, D_POS, ENC_FACTOR, [](double pos)
+{
+	onMotorPosition(pos);
+});
+
+IntervalTimer tmr;
 Timer tmrMotor;
 MPU9250_CompassOnly imu;
 Adafruit_PCD8544 display = Adafruit_PCD8544(LCD_SCLK_PIN, LCD_DIN_PIN, LCD_DC_PIN, LCD_CS_PIN, LCD_RST_PIN);
@@ -47,11 +73,9 @@ MicroNMEA nmea(buffer, sizeof(buffer));
 Buzzer buzzer(BUZZER_PIN);
 Servo tilt;
 
-float fHardCalibDegreeCounter = 360.0f * 5.f;
-bool bHardCalibDone = false;
-float fSoftCalibDegreeCounter = 360.0f * 5.f;
-bool bSoftCalibDone = false;
+float fCalibDegreeCounter = 360.0f * 5.f;
 float fMagOffset;
+float fMagDeclination = 0.f;
 
 struct SystemStatus
 {
@@ -81,18 +105,6 @@ struct SystemStatus
 };
 SystemStatus status;
 
-void onMotorPosition(float iPosition);
-
-TrackerMotor motor(MOTOR_STEP_PIN, MOTOR_DIR_PIN, 300, [] (int iAfterMs) {
-	if (0 != iAfterMs)
-	{
-		tmrMotor.after(iAfterMs, [] { motor.onTimerElapsed(); });
-	}
-}, [](float fPosition)
-{
-	onMotorPosition(fPosition);
-});
-
 void error(const __FlashStringHelper* txt, int num = -32768) {
 	display.clearDisplay();
 	display.setTextSize(2);
@@ -107,60 +119,10 @@ void error(const __FlashStringHelper* txt, int num = -32768) {
 	while (true) { ; }
 }
 
-void I2Cscan()
-{
-	// scan for i2c devices
-	byte error, address;
-	int nDevices;
-	Serial.println("Scanning...");
-	nDevices = 0;
-	for (address = 1; address < 127; address++)
-	{
-		// The i2c_scanner uses the return value of
-		// the Write.endTransmisstion to see if
-		// a device did acknowledge to the address.
-		Wire.beginTransmission(address);
-		error = Wire.endTransmission();
-		if (error == 0)
-		{
-			Serial.print("I2C device found at address 0x");
-			if (address<16)
-				Serial.print("0");
-			Serial.print(address, HEX);
-			Serial.println("  !");
-			nDevices++;
-		}
-		else if (error == 4)
-		{
-			Serial.print("Unknow error at address 0x");
-			if (address<16)
-				Serial.print("0");
-			Serial.println(address, HEX);
-		}
-	}
-	if (nDevices == 0)
-		Serial.println("No I2C devices found\n");
-	else
-		Serial.println("done\n");
-}
-
 void initMPU() {
 	Wire.begin();
 
 	delay(1500);
-	I2Cscan();
-
-	/*
-	// check MPU
-	// Read the WHO_AM_I register, this is a good test of communication
-	byte c = imu.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
-
-	Serial.println(c);
-	if (c != 0x71) {
-		error(F("Could not find MPU"));
-	}
-	
-	delay(1000);*/
 
 	// set MPU to bypass mode
 	imu.writeByte(MPU9250_ADDRESS, INT_PIN_CFG, 0x22);
@@ -324,15 +286,16 @@ bool readMagnetometer()
 
 void setPanDegrees(float fDegrees)
 {
-	motor.setPosition((int)(fDegrees - fMagOffset - COMPASS_ROTATION));
+	rotor.setPosition((int)(fDegrees - fMagOffset - COMPASS_ROTATION - fMagDeclination));
 }
 
 void setTiltDegrees(int degrees)
 {
 	degrees = min(max(degrees, 0), 90);
 
-	tilt.writeMicroseconds(TILT_SERVO_HORIZONTAL_PWM +
-		(TILT_SERVO_VERTIAL_PWM - TILT_SERVO_HORIZONTAL_PWM) * degrees / 90);
+	auto tmp = TILT_SERVO_HORIZONTAL_PWM +
+		(TILT_SERVO_VERTIAL_PWM - TILT_SERVO_HORIZONTAL_PWM) * degrees / 90;
+	tilt.writeMicroseconds(tmp);
 }
 
 void onMotorPosition(float fPosition)
@@ -340,32 +303,22 @@ void onMotorPosition(float fPosition)
 	static float fLastPosition = 0.0f;
 
 	float fMove = abs(fPosition - fLastPosition);
+	if (fMove > 180.f)
+		fMove = 360.f - fMove;
+
 	fLastPosition = fPosition;
 
-	if (fHardCalibDegreeCounter > 0.f)
+	if (fCalibDegreeCounter > 0.f)
 	{
-		if (readMagnetometer())
-			mag.putCenterCalibValue(imu.mx, imu.my);
-		fHardCalibDegreeCounter -= fMove;
-	}
-	else if (fSoftCalibDegreeCounter > 0.f)
-	{
-		if (!bHardCalibDone)
-		{
-			bHardCalibDone = true;
-			mag.finishCenterCalib();
-		}
-
 		if (readMagnetometer())
 			mag.putCalibValue(fPosition, imu.mx, imu.my);
-		fSoftCalibDegreeCounter -= fMove;
+		fCalibDegreeCounter -= fMove;
 	}
-	else if (!bSoftCalibDone)
+	else if (!status.bMagCalibrationDone)
 	{
-		bSoftCalibDone = true;
 		fMagOffset = mag.finishCalib();
 
-		motor.setContinuousSpeed(0);
+		rotor.setContinuousSpeed(0);
 		setPanDegrees(0);
 
 		status.bMagCalibrationDone = true;
@@ -376,7 +329,7 @@ void setup() {
 	// bind switch
 	//pinMode(BT_BINDSWITCH_PIN, INPUT_PULLUP);
 
-	Serial.begin(9600);
+	Serial.begin(115200);
 	gps.begin(9600);
 
 	display.begin();
@@ -393,9 +346,15 @@ void setup() {
 	// alert beeping
 	buzzer.setBuzzing(1000, 1000, 3);
 
+	// 10ms timer for rotor
+	tmr.begin([]
+	{
+		rotor.on10000usElapsed();
+	}, 10000.);
+
 	// start with compass calibration after 5 seconds
 	tmrMotor.after(5000, [] {
-		motor.setContinuousSpeed(200);
+		rotor.setContinuousSpeed(180);
 	});
 }
 
@@ -418,6 +377,7 @@ void loop()
 
 	// motor
 	tmrMotor.update();
+	rotor.update();
 	
 	// let bluetooth/mavlink do its work
 	xfire.onLoop();
@@ -435,6 +395,10 @@ void loop()
 				if (nmea.getAltitude(alt))
 					status.gps_alt = (float)alt / 1000.0f;
 				status.gps_has_fix = true;
+
+				fMagDeclination = PosCalc::getMagDeclination(status.gps_lat, status.gps_lon);
+				Serial.print("MAG Declination: ");
+				Serial.println(fMagDeclination);
 			}
 		}
 	}
@@ -446,6 +410,11 @@ void loop()
 
 	static bool bFullFix = false;
 
+	if (digitalRead(BT_BINDSWITCH_PIN) == LOW)
+	{
+		setPanDegrees(-100);
+	}
+
 	if ((status.mavlink_active = mavlink.getPos(lat, lon, alt)) && status.gps_has_fix)
 	{
 		if (!bFullFix)
@@ -453,10 +422,16 @@ void loop()
 			bFullFix = true;
 			buzzer.setBuzzing(20, 3000);
 		}
+		auto diff = PosCalc::calcDiff(PosCalc::Position(status.gps_lat, status.gps_lon, 0.f),
+			PosCalc::Position(lat, lon, alt));
 
-		Serial.print("GPS lat: "); Serial.print(status.gps_lat); Serial.print(" MAV lat: "); Serial.println(lat);
-		Serial.print("GPS lon: "); Serial.print(status.gps_lon); Serial.print(" MAV lon: "); Serial.println(lon);
+		setPanDegrees(diff.bearingDeg);
+		setTiltDegrees(max(diff.elevationDeg, 0.f)); // we cannot tilt downwards
+
+		Serial.print("GPS lat: "); Serial.print(status.gps_lat, 8); Serial.print(" MAV lat: "); Serial.println(lat, 8);
+		Serial.print("GPS lon: "); Serial.print(status.gps_lon, 8); Serial.print(" MAV lon: "); Serial.println(lon, 8);
 		Serial.print("GPS alt: "); Serial.print(status.gps_alt); Serial.print(" MAV alt: "); Serial.println(alt);
+		Serial.print("Bearing: "); Serial.print(diff.bearingDeg); Serial.print(" Elevation: "); Serial.println(diff.elevationDeg);
 		Serial.println("");
 	}
 	else if (bFullFix)

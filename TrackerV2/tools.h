@@ -11,6 +11,18 @@ float normalizeAngle(float val);
 float rad2deg(float rad);
 float deg2rad(float deg);
 
+template<typename T> T customModule(T a, T n)
+{
+	return (a % n + n) % n;
+}
+
+template <typename T> T calcCircleDiff(T from, T to, T circle)
+{
+	auto a = to - from;
+	a = customModule((a + (circle / (T)2)), circle) - (circle / (T)2);
+
+	return a;
+}
 
 template<class T> struct remove_reference { typedef T type; };
 template<class T> struct remove_reference<T&> { typedef T type; };
