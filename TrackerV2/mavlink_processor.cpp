@@ -38,7 +38,7 @@ bool MavlinkProcessor::process(char chr)
 		}
 		case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
 			// with vector AP, the x-fire doesn't return relative altitude (it returns absolute altitude instead)
-			// we can detect that case by checking if relativ and absolute alt are the same
+			// we can detect that case by checking if relative and absolute alt are the same
 			auto alt1 = (float)mavlink_msg_global_position_int_get_relative_alt(&msg) / 1000.f;
 			auto alt2 = (float)mavlink_msg_global_position_int_get_alt(&msg) / 1000.f;
 			if (alt1 != alt2)
@@ -49,6 +49,7 @@ bool MavlinkProcessor::process(char chr)
 			{
 				// record home altitude
 				this->alt_diff = alt2;
+				bHomeAltSet = true;
 			}
 
 			this->alt = alt1 - this->alt_diff;

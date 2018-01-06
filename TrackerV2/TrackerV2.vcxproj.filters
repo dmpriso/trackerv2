@@ -33,9 +33,6 @@
     <ClCompile Include="limited_string.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="stream_processor.cpp">
-      <Filter>Header Files</Filter>
-    </ClCompile>
     <ClCompile Include="const_string.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

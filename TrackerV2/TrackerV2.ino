@@ -5,6 +5,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
 #include <Servo.h>
+#include <AltSoftSerial.h>
 
 #include "MPU_Small.h"
 #include "motor.h"
@@ -19,29 +20,27 @@
 #include "pos_avg.h"
 #include "pos_calc.h"
 
-#define BT_CONNECT_PIN 12
-#define BT_BINDSWITCH_PIN 11
-#define MOTOR_DIR_PIN 4
-#define MOTOR_STEP_PIN 3
-#define MOTOR_FAULT_PIN 2
-#define TILT_SERVO_PIN 5
+#define BT_CONNECT_PIN 2
+#define BT_BINDSWITCH_PIN 25
+#define TILT_SERVO_PIN 9
 #define TILT_SERVO_HORIZONTAL_PWM 1930
 #define TILT_SERVO_VERTIAL_PWM 1060
-#define LCD_SCLK_PIN 13
-#define LCD_DIN_PIN 14
-#define LCD_DC_PIN 15
-#define LCD_CS_PIN 22
-#define LCD_RST_PIN 20
-#define BUZZER_PIN 23
+#define LCD_SCLK_PIN 19
+#define LCD_DIN_PIN 20
+#define LCD_DC_PIN 21
+#define LCD_CS_PIN 23
+#define LCD_RST_PIN 22
+#define BUZZER_PIN 10
 #define VSENS_AREF 3.3f
-#define VSENS_APIN 3
-#define VSENS_FACTOR 6.0f
-#define COMPASS_ROTATION 90.0f
+#define VSENS_APIN 0
+#define VSENS_FACTOR 5.545453f
+#define COMPASS_ROTATION 0.0f
 
-#define PWM_PIN 3
-#define DIR_PIN 2
-#define ENC_PIN_1 6
-#define ENC_PIN_2 4
+#define PWM_PIN 6
+#define DIR_PIN 3
+#define DIR_REVERSE false
+#define ENC_PIN_1 11
+#define ENC_PIN_2 12
 #define ENC_FACTOR (3591.84 * 3. / 2.)
 
 #define P_SPEED 4.
@@ -54,7 +53,7 @@
 
 void onMotorPosition(float iPosition);
 
-Motor motor(PWM_PIN, DIR_PIN, ENC_PIN_1, ENC_PIN_2);
+Motor motor(PWM_PIN, DIR_PIN, ENC_PIN_1, ENC_PIN_2, DIR_REVERSE);
 MotorWithSpeedCtrl smotor(motor, P_SPEED, I_SPEED, D_SPEED);
 RotorWithPosCtrl rotor(smotor, P_POS, I_POS, D_POS, ENC_FACTOR, [](double pos)
 {
@@ -68,7 +67,7 @@ Adafruit_PCD8544 display = Adafruit_PCD8544(LCD_SCLK_PIN, LCD_DIN_PIN, LCD_DC_PI
 MagCalib mag;
 Bluetooth xfire(Serial3, BT_CONNECT_PIN, BT_BINDSWITCH_PIN, true, showBTStatus, showBTError, showBTConnectStatus, selectBTPeer, processBTData);
 MavlinkProcessor mavlink;
-HardwareSerial& gps = Serial2;
+HardwareSerial& gps = Serial1;
 char buffer[85];
 MicroNMEA nmea(buffer, sizeof(buffer));
 PositionAverager<16> gps_avg;
@@ -88,10 +87,17 @@ struct SystemStatus
 	int bt_status = 0;
 	bool mavlink_active = false;
 	bool gps_has_fix = false;
+	bool vbat_low = false;
 
 	float gps_lon = 0.0f;
 	float gps_lat = 0.0f;
 	float gps_alt = 0.0f;
+
+	float mav_lon = 0.0f;
+	float mav_lat = 0.0f;
+	float mav_alt = 0.0f;
+	float bearing_deg = 0.f;
+	float elevation_deg = 0.f;
 
 	inline bool operator==(const SystemStatus& comp) const
 	{
@@ -101,7 +107,13 @@ struct SystemStatus
 			vbat_per_cell == comp.vbat_per_cell &&
 			bt_status == comp.bt_status &&
 			mavlink_active == comp.mavlink_active &&
-			gps_has_fix == comp.gps_has_fix);
+			gps_has_fix == comp.gps_has_fix &&
+			vbat_low == comp.vbat_low &&
+			mav_lon == comp.mav_lon &&
+			mav_lat == comp.mav_lat &&
+			mav_alt == comp.mav_alt &&
+			bearing_deg == comp.bearing_deg &&
+			elevation_deg == comp.elevation_deg);
 	}
 	inline bool operator!=(const SystemStatus& comp) const { return !this->operator==(comp); }
 };
@@ -122,6 +134,9 @@ void error(const __FlashStringHelper* txt, int num = -32768) {
 }
 
 void initMPU() {
+	Wire.setSDA(17);
+	Wire.setSCL(16);
+	
 	Wire.begin();
 
 	delay(1500);
@@ -143,11 +158,25 @@ void initMPU() {
 
 void showStatus()
 {
+	static uint32_t btn_until = 0;
+	bool bButton = false;
+	if (digitalRead(BT_BINDSWITCH_PIN) == LOW)
+	{
+		btn_until = millis() + 3000;
+		bButton = true;
+	}
+	else if (millis() < btn_until)
+	{
+		bButton = true;
+	}
+	static bool lastbutton = false;
+
 	static SystemStatus laststatus;
 
-	if (laststatus != status)
+	if (laststatus != status || bButton != lastbutton)
 	{
 		laststatus = status;
+		lastbutton = bButton;
 
 		display.clearDisplay();
 		display.setTextSize(2);
@@ -162,41 +191,76 @@ void showStatus()
 		}
 		else
 		{
-			display.print(F("Status"));
+			if (status.vbat_low)
+				display.print(F("LowBatt"));
+			else if (status.bMagCalibrationDone &&
+				status.bt_status == 1 &&
+				status.gps_has_fix &&
+				status.mavlink_active)
+				display.print(F("Ready"));
+			else
+				display.print(F("Status"));
 
 			display.setTextSize(1);
 
-			// battery
-			display.setCursor(0, 16);
-			display.print(F("Battery: "));
-			display.print(status.vbat, 1);
-			display.print(F("V"));
+			if (bButton && status.bt_status == 1)
+			{
+				display.setCursor(0, 16);
+				display.print("Lat: ");
+				display.println(status.mav_lat, 6);
 
-			// bluetooth
-			display.setCursor(0, 24);
-			display.print(F("BT: "));
-			if (status.bt_status == 2)
-				display.print(F("Searching"));
-			else if (status.bt_status == 1)
-				display.print(F("OK"));
-			else
-				display.print(F("Connecting"));
+				display.print("Lon: ");
+				display.println(status.mav_lon, 6);
 
-			// mavlink
-			display.setCursor(0, 32);
-			display.print(F("Tlmtry: "));
-			if (status.mavlink_active)
-				display.print(F("OK"));
-			else
-				display.print(F("NOK"));
+				display.print("Alt: ");
+				display.println(status.mav_alt, 0);
 
-			// gps fix
-			display.setCursor(0, 40);
-			display.print(F("GPS: "));
-			if (status.gps_has_fix)
-				display.print(F("OK"));
+				display.print(status.bearing_deg, 0);
+				display.print(" / ");
+				display.print(status.elevation_deg, 0);
+			}
 			else
-				display.print(F("Acquiring"));
+			{
+				// battery
+				display.setCursor(0, 16);
+				display.print(F("Battery: "));
+				display.print(status.vbat, 1);
+				display.print(F("V"));
+
+				// bluetooth
+				display.setCursor(0, 24);
+				display.print(F("BT: "));
+				if (status.bt_status == 1)
+					display.print(F("OK"));
+				else if (status.bt_status == 2)
+					display.print(F("Searching"));
+				else
+					display.print(F("Connecting"));
+
+				// mavlink OR btn hint
+				display.setCursor(0, 32);
+
+				if (status.bt_status != 1 && bButton)
+				{
+					display.print("Hold button to search for XFire BT peear");
+				}
+				else
+				{
+					display.print(F("Tlmtry: "));
+					if (status.mavlink_active)
+						display.print(F("OK"));
+					else
+						display.print(F("NOK"));
+
+					// gps fix
+					display.setCursor(0, 40);
+					display.print(F("GPS: "));
+					if (status.gps_has_fix)
+						display.print(F("OK"));
+					else
+						display.print(F("Acquiring"));
+				}
+			}
 		}
 		display.display();
 	}
@@ -333,10 +397,13 @@ void setup() {
 
 	Serial.begin(115200);
 	gps.begin(9600);
+	Serial3.begin(9600);
 
 	display.begin();
 	display.setContrast(58); // Set the contrast
 	display.clearDisplay();
+	display.print("Starting...");
+	display.display();
 
 	tilt.attach(TILT_SERVO_PIN);
 	setTiltDegrees(45);
@@ -437,23 +504,27 @@ void loop()
 
 	static bool bFullFix = false;
 
-	if (digitalRead(BT_BINDSWITCH_PIN) == LOW)
-	{
-		setPanDegrees(-100);
-	}
+	bool bSignalFullFix = false;
+	bool bSignalFixLost = false;
+	bool bSignalBatteryLow = false;
 
 	if ((status.mavlink_active = mavlink.getPos(lat, lon, alt)) && status.gps_has_fix)
 	{
 		if (!bFullFix)
 		{
-			bFullFix = true;
-			buzzer.setBuzzing(20, 3000);
+			bSignalFullFix = bFullFix = true;
 		}
 		auto diff = PosCalc::calcDiff(PosCalc::Position(status.gps_lat, status.gps_lon, 0.f),
 			PosCalc::Position(lat, lon, alt));
 
 		setPanDegrees(diff.bearingDeg);
 		setTiltDegrees(max(diff.elevationDeg, 0.f)); // we cannot tilt downwards
+
+		status.mav_lat = lat;
+		status.mav_lon = lon;
+		status.mav_alt = alt;
+		status.bearing_deg = diff.bearingDeg;
+		status.elevation_deg = diff.elevationDeg;
 
 		Serial.print("GPS lat: "); Serial.print(status.gps_lat, 8); Serial.print(" MAV lat: "); Serial.println(lat, 8);
 		Serial.print("GPS lon: "); Serial.print(status.gps_lon, 8); Serial.print(" MAV lon: "); Serial.println(lon, 8);
@@ -464,9 +535,32 @@ void loop()
 	else if (bFullFix)
 	{
 		bFullFix = false;
+		bSignalFixLost = false;
+	}
+	if (status.vbat_per_cell < 3.5f && !status.vbat_low)
+	{
+		status.vbat_low = true;
+		bSignalBatteryLow = true;
+	}
+	else if (status.vbat_per_cell > 3.7f && status.vbat_low)
+	{
+		status.vbat_low = false;
+	}
 
-		// alert buzzing: we lost mavlink
-		buzzer.setBuzzing(1000, 500, 10);
+	if (!status.bMagCalibrationDone)
+	{
+		if (bSignalBatteryLow)
+		{
+			buzzer.setBuzzing(500, 1000, 20);
+		}
+		else if (bSignalFixLost)
+		{
+			buzzer.setBuzzing(1000, 500, 10);
+		}
+		else if (bSignalFullFix)
+		{
+			buzzer.setBuzzing(20, 3000);
+		}
 	}
 
 	showStatus();

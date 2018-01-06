@@ -2,7 +2,7 @@
 #define BLUETOOTH_H
 
 #include <Arduino.h>
-#include <SoftwareSerial.h>
+#include <Stream.h>
 #include "stream_processor.h"
 #include "state_machine.h"
 
@@ -35,7 +35,7 @@ public:
 	typedef void(*dataReceivedFn)(char chr);
 
 public:
-	Bluetooth(HardwareSerial& serial,
+	Bluetooth(Stream& serial,
 		uint8_t connectAnalogPin,
 		uint8_t bindSwitchPin,
 		bool bRedirectToSerial,
@@ -102,7 +102,7 @@ private:
 	void onError(const __FlashStringHelper* err, int recoverTime = 3000);
 
 private:
-	HardwareSerial& m_sserial;
+	Stream& m_sserial;
 	const uint8_t m_connectPin;
 	const uint8_t m_bindSwitchPin;
 

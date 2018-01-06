@@ -63,7 +63,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\TrackerV2;$(ProjectDir)..\..\..\..\Arduino\libraries\Timer-master;$(ProjectDir)..\..\..\..\Arduino\libraries\MicroNMEA\src;$(ProjectDir)..\..\..\..\Arduino\libraries\Sparkfun_MPU-9250\src;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\SPI;$(ProjectDir)..\..\..\..\Arduino\libraries\Adafruit_GFX;$(ProjectDir)..\..\..\..\Arduino\libraries\Adafruit_PCD8544;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Servo;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\SoftwareSerial;$(ProjectDir)..\..\..\..\Arduino\libraries\mavlink;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire\utility;C:\Program Files (x86)\Arduino\libraries;C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries;$(ProjectDir)..\..\..\..\Arduino\libraries;C:\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3;C:\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3\avr;C:\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3\util;C:\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3\utils;C:\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3\avr;$(ProjectDir)C:\Program Files (x86)\Arduino\hardware\tools\arm\arm-none-eabi\include;C:\Program Files (x86)\Arduino\hardware\teensy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\TrackerV2;D:\Documents\Arduino\libraries\Timer-master;D:\Documents\Arduino\libraries\MicroNMEA\src;D:\Documents\Arduino\libraries\Sparkfun_MPU-9250\src;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\SPI;D:\Documents\Arduino\libraries\Adafruit_GFX;D:\Documents\Arduino\libraries\Adafruit_PCD8544;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Servo;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Encoder;D:\Documents\Arduino\libraries\Filters-master;D:\Documents\Arduino\libraries\PID;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\SoftwareSerial;D:\Documents\Arduino\libraries\mavlink;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Encoder\utility;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries\Wire\utility;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\libraries;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\libraries;D:\Documents\Arduino\libraries;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3\avr;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3\util;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3\utils;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy\avr\cores\teensy3\avr;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\tools\arm\arm-none-eabi\include;$(ProjectDir)..\..\..\Program Files (x86)\Arduino\hardware\teensy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(ProjectDir)__vm\.TrackerV2.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <PreprocessorDefinitions>__HARDWARE_MK20dx256__;__HARDWARE_MK20DX256__;__MK20DX256__;TEENSYDUINO=140;ARDUINO=10804;F_CPU=96000000;USB_SERIAL;LAYOUT_US_ENGLISH;__cplusplus=201103L;_VMICRO_INTELLISENSE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -94,7 +94,11 @@
     <ClInclude Include="mag_calib.h" />
     <ClInclude Include="mavlink_processor.h" />
     <ClInclude Include="motor.h" />
+    <ClInclude Include="motor_with_speed_ctrl.h" />
     <ClInclude Include="MPU_Small.h" />
+    <ClInclude Include="pos_avg.h" />
+    <ClInclude Include="pos_calc.h" />
+    <ClInclude Include="rotor_with_pos_ctrl.h" />
     <ClInclude Include="state_machine.h" />
     <ClInclude Include="stream_processor.h" />
     <ClInclude Include="tools.h" />
@@ -108,8 +112,10 @@
     <ClCompile Include="mag_calib.cpp" />
     <ClCompile Include="mavlink_processor.cpp" />
     <ClCompile Include="motor.cpp" />
+    <ClCompile Include="motor_with_speed_ctrl.cpp" />
     <ClCompile Include="MPU_Small.cpp" />
-    <ClCompile Include="stream_processor.cpp" />
+    <ClCompile Include="pos_calc.cpp" />
+    <ClCompile Include="rotor_with_pos_ctrl.cpp" />
     <ClCompile Include="tools.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

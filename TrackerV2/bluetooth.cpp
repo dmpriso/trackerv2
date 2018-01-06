@@ -1,7 +1,7 @@
 #include "bluetooth.h"
 #include <mavlink.h>
 
-Bluetooth::Bluetooth(HardwareSerial& serial,
+Bluetooth::Bluetooth(Stream& serial,
 	uint8_t connectPin,
 	uint8_t bindSwitchPin,
 	bool bRedirectToSerial,
@@ -21,7 +21,6 @@ Bluetooth::Bluetooth(HardwareSerial& serial,
 	m_fnSelectPeer(fnSelectPeer),
 	m_fnDataReceived(fnDataReceived)
 {
-	serial.begin(9600);
 	pinMode(connectPin, INPUT);
 	pinMode(bindSwitchPin, INPUT_PULLUP);
 
