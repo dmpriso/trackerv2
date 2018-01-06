@@ -4,7 +4,6 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
-#include <Servo.h>
 #include <AltSoftSerial.h>
 
 #include "MPU_Small.h"
@@ -19,6 +18,8 @@
 #include "buzzer.h"
 #include "pos_avg.h"
 #include "pos_calc.h"
+#include "damped_servo.h"
+#include "pos_advance_estimator.h"
 
 #define BT_CONNECT_PIN 2
 #define BT_BINDSWITCH_PIN 25
@@ -67,12 +68,13 @@ Adafruit_PCD8544 display = Adafruit_PCD8544(LCD_SCLK_PIN, LCD_DIN_PIN, LCD_DC_PI
 MagCalib mag;
 Bluetooth xfire(Serial3, BT_CONNECT_PIN, BT_BINDSWITCH_PIN, true, showBTStatus, showBTError, showBTConnectStatus, selectBTPeer, processBTData);
 MavlinkProcessor mavlink;
+PosAdvanceEstimator mavlink_advance(500);	// calc position 500ms in advance
 HardwareSerial& gps = Serial1;
 char buffer[85];
 MicroNMEA nmea(buffer, sizeof(buffer));
 PositionAverager<16> gps_avg;
 Buzzer buzzer(BUZZER_PIN);
-Servo tilt;
+DampedServo tilt(TILT_SERVO_PIN, TILT_SERVO_HORIZONTAL_PWM, TILT_SERVO_VERTIAL_PWM);
 
 float fCalibDegreeCounter = 360.0f * 5.f;
 float fMagOffset;
@@ -359,9 +361,7 @@ void setTiltDegrees(int degrees)
 {
 	degrees = min(max(degrees, 0), 90);
 
-	auto tmp = TILT_SERVO_HORIZONTAL_PWM +
-		(TILT_SERVO_VERTIAL_PWM - TILT_SERVO_HORIZONTAL_PWM) * degrees / 90;
-	tilt.writeMicroseconds(tmp);
+	tilt.setPosition((float)degrees / 90.f);
 }
 
 void onMotorPosition(float fPosition)
@@ -405,7 +405,6 @@ void setup() {
 	display.print("Starting...");
 	display.display();
 
-	tilt.attach(TILT_SERVO_PIN);
 	setTiltDegrees(45);
 
 	initMPU();
@@ -514,8 +513,11 @@ void loop()
 		{
 			bSignalFullFix = bFullFix = true;
 		}
+
+		auto adv = mavlink_advance.calc(PosCalc::Position(lat, lon, alt));
+
 		auto diff = PosCalc::calcDiff(PosCalc::Position(status.gps_lat, status.gps_lon, 0.f),
-			PosCalc::Position(lat, lon, alt));
+			PosCalc::Position(adv.lat, adv.lon, adv.alt));
 
 		setPanDegrees(diff.bearingDeg);
 		setTiltDegrees(max(diff.elevationDeg, 0.f)); // we cannot tilt downwards
@@ -526,9 +528,9 @@ void loop()
 		status.bearing_deg = diff.bearingDeg;
 		status.elevation_deg = diff.elevationDeg;
 
-		Serial.print("GPS lat: "); Serial.print(status.gps_lat, 8); Serial.print(" MAV lat: "); Serial.println(lat, 8);
-		Serial.print("GPS lon: "); Serial.print(status.gps_lon, 8); Serial.print(" MAV lon: "); Serial.println(lon, 8);
-		Serial.print("GPS alt: "); Serial.print(status.gps_alt); Serial.print(" MAV alt: "); Serial.println(alt);
+		Serial.print("GPS lat: "); Serial.print(status.gps_lat, 8); Serial.print(" MAV lat: "); Serial.println(lat, 8); Serial.print(" ADV lat: "); Serial.println(adv.lat, 8);
+		Serial.print("GPS lon: "); Serial.print(status.gps_lon, 8); Serial.print(" MAV lon: "); Serial.println(lon, 8); Serial.print(" ADV lon: "); Serial.println(adv.lon, 8);
+		Serial.print("GPS alt: "); Serial.print(status.gps_alt); Serial.print(" MAV alt: "); Serial.println(alt); Serial.print(" ADV alt: "); Serial.println(adv.alt, 8);
 		Serial.print("Bearing: "); Serial.print(diff.bearingDeg); Serial.print(" Elevation: "); Serial.println(diff.elevationDeg);
 		Serial.println("");
 	}
@@ -562,6 +564,9 @@ void loop()
 			buzzer.setBuzzing(20, 3000);
 		}
 	}
+
+	// tilt servo
+	tilt.update();
 
 	showStatus();
 }

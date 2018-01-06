@@ -45,6 +45,18 @@
     <ClCompile Include="buzzer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="motor_with_speed_ctrl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pos_calc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rotor_with_pos_ctrl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="damped_servo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="motor.h">
@@ -84,6 +96,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="buzzer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="motor_with_speed_ctrl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pos_avg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pos_calc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rotor_with_pos_ctrl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="damped_servo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
