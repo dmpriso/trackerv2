@@ -57,6 +57,12 @@
     <ClCompile Include="damped_servo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="pos_advance_estimator.cpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="toggle_output.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="motor.h">
@@ -111,6 +117,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="damped_servo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pos_advance_estimator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="toggle_output.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
