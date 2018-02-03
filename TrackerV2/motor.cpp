@@ -19,7 +19,13 @@ Motor::Motor(uint8_t pwm_pin,
 
 void Motor::internalSetSpeed(float speedPermille)
 {
-	digitalWrite(this->m_dir_pin, ((speedPermille >= 0.f) ? LOW : HIGH));
+	auto dir = (((speedPermille >= 0.f) ^ this->m_reverse) ? LOW : HIGH);
+	digitalWrite(this->m_dir_pin, dir);
+
+	//Serial.print("Speed: ");
+	//Serial.print(speedPermille);
+	//Serial.print(" Dir: ");
+	//Serial.println(dir);
 	analogWrite(this->m_pwm_pin, (int)(min(abs(speedPermille) * 1024.f / 1000.f, 1023.f)));
 }
 

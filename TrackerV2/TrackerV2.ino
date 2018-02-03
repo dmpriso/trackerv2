@@ -20,10 +20,12 @@
 #include "pos_calc.h"
 #include "damped_servo.h"
 #include "pos_advance_estimator.h"
+#include "toggle_output.h"
 
 #define BT_CONNECT_PIN 2
-#define BT_BINDSWITCH_PIN 25
-#define TILT_SERVO_PIN 9
+#define BT_BINDSWITCH_PIN 18
+#define BT_LED_PIN 3
+#define TILT_SERVO_PIN 5
 #define TILT_SERVO_HORIZONTAL_PWM 1930
 #define TILT_SERVO_VERTIAL_PWM 1060
 #define LCD_SCLK_PIN 19
@@ -31,14 +33,14 @@
 #define LCD_DC_PIN 21
 #define LCD_CS_PIN 23
 #define LCD_RST_PIN 22
-#define BUZZER_PIN 10
+#define BUZZER_PIN 8
 #define VSENS_AREF 3.3f
 #define VSENS_APIN 0
 #define VSENS_FACTOR 5.545453f
-#define COMPASS_ROTATION 0.0f
+#define COMPASS_ROTATION 90.0f
 
 #define PWM_PIN 6
-#define DIR_PIN 3
+#define DIR_PIN 7
 #define DIR_REVERSE false
 #define ENC_PIN_1 11
 #define ENC_PIN_2 12
@@ -66,7 +68,8 @@ Timer tmrMotor;
 MPU9250_CompassOnly imu;
 Adafruit_PCD8544 display = Adafruit_PCD8544(LCD_SCLK_PIN, LCD_DIN_PIN, LCD_DC_PIN, LCD_CS_PIN, LCD_RST_PIN);
 MagCalib mag;
-Bluetooth xfire(Serial3, BT_CONNECT_PIN, BT_BINDSWITCH_PIN, true, showBTStatus, showBTError, showBTConnectStatus, selectBTPeer, processBTData);
+HardwareSerial& btserial = Serial2;
+Bluetooth xfire(btserial, BT_CONNECT_PIN, BT_BINDSWITCH_PIN, true, showBTStatus, showBTError, showBTConnectStatus, selectBTPeer, processBTData);
 MavlinkProcessor mavlink;
 PosAdvanceEstimator mavlink_advance(500);	// calc position 500ms in advance
 HardwareSerial& gps = Serial1;
@@ -75,6 +78,7 @@ MicroNMEA nmea(buffer, sizeof(buffer));
 PositionAverager<16> gps_avg;
 Buzzer buzzer(BUZZER_PIN);
 DampedServo tilt(TILT_SERVO_PIN, TILT_SERVO_HORIZONTAL_PWM, TILT_SERVO_VERTIAL_PWM);
+ToggleOutput led(BT_LED_PIN);
 
 float fCalibDegreeCounter = 360.0f * 5.f;
 float fMagOffset;
@@ -287,6 +291,11 @@ void showBTStatus(const __FlashStringHelper* stat) {
 
 void showBTConnectStatus(int connected) {
 	status.bt_status = connected;
+
+	if (0 == connected)
+		led.set(500, 500);
+	else if (1 == connected)
+		led.set(1, 0);
 }
 
 bool selectBTPeer(const char* peername) {
@@ -394,10 +403,12 @@ void onMotorPosition(float fPosition)
 void setup() {
 	// bind switch
 	//pinMode(BT_BINDSWITCH_PIN, INPUT_PULLUP);
+	pinMode(BT_LED_PIN, OUTPUT);
+	digitalWrite(BT_LED_PIN, HIGH);
 
 	Serial.begin(115200);
 	gps.begin(9600);
-	Serial3.begin(9600);
+	btserial.begin(9600);
 
 	display.begin();
 	display.setContrast(58); // Set the contrast
@@ -431,6 +442,9 @@ void loop()
 	// buzzer
 	buzzer.update();
 
+	// led
+	led.update();
+
 	// read vbat
 	static uint32_t next_vbat_read = 0;
 	if (millis() >= next_vbat_read)
@@ -453,6 +467,7 @@ void loop()
 	// process GPS
 	if (gps.available()) {
 		char c = gps.read();
+
 		if (nmea.process(c))
 		{
 			if (nmea.isValid())

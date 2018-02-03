@@ -13,12 +13,14 @@ void PosAdvanceEstimator::cleanup()
 	{
 		if ((now - this->m_lastPositions[i].ts) < 5000)
 			break;
+
 		++iNumRemove;
 	}
-	for (int i = 0; i < this->m_iNumLastPositions - iNumRemove; i++)
-	{
-		this->m_lastPositions[i] = this->m_lastPositions[i + iNumRemove];
-	}
+	if (iNumRemove > 0)
+		for (int i = 0; i < this->m_iNumLastPositions - iNumRemove; i++)
+		{
+			this->m_lastPositions[i] = this->m_lastPositions[i + iNumRemove];
+		}
 	this->m_iNumLastPositions -= iNumRemove;
 }
 
@@ -53,7 +55,6 @@ PosCalc::Position PosAdvanceEstimator::calc(const PosCalc::Position& pos)
 
 		if (dTime > 1.f)
 		{
-
 			// calc diff up to current time
 			auto dTime2 = (float)(millis() + this->m_iMillisAdvance) - (float)pos2.ts;
 			auto dFactor = dTime2 / dTime;

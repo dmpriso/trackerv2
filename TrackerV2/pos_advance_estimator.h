@@ -41,7 +41,6 @@ private:
 	PosWithTime m_lastPositions[2];
 	int m_iNumLastPositions = 0;
 	const int m_lastPositionsSize = sizeof(m_lastPositions) / sizeof(PosWithTime);
-
 };
 
 #endif
