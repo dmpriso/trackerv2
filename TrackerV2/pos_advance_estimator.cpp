@@ -74,12 +74,12 @@ PosCalc::Position PosAdvanceEstimator::calc(const PosCalc::Position& pos)
 		}
 		this->m_lastPositions[this->m_iNumLastPositions++] = PosWithTime(millis(), pos);
 
-		Serial.println("ADVEST new pos. Items:");
+		//Serial.println("ADVEST new pos. Items:");
 		for (int i = 0; i < this->m_iNumLastPositions; i++)
 		{
 			//Serial.print(i);
 			//Serial.print("#: ");
-			auto& pos = this->m_lastPositions[i];
+			//auto& pos = this->m_lastPositions[i];
 			//Serial.print(pos.pos.lat, 8);
 			//Serial.print(" ");
 			//Serial.print(pos.pos.lon, 8);

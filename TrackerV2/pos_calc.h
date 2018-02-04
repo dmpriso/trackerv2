@@ -24,7 +24,7 @@ public:
 	struct Difference
 	{
 		float distance = 0.f;
-		float bearingDeg;
+		float bearingDeg = 0.f;
 		float elevationDeg = 0.f;
 	};
 
