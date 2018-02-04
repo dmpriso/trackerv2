@@ -213,10 +213,10 @@ void showStatus()
 			{
 				display.setCursor(0, 16);
 				display.print("Lat: ");
-				display.println(status.mav_lat, 6);
+				display.println(status.mav_lat, 4);
 
 				display.print("Lon: ");
-				display.println(status.mav_lon, 6);
+				display.println(status.mav_lon, 4);
 
 				display.print("Alt: ");
 				display.println(status.mav_alt, 0);
