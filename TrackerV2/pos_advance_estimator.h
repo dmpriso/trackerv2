@@ -2,6 +2,7 @@
 #define POS_ADVANCE_ESTIMATOR_H
 
 #include "pos_calc.h"
+#include <Filters.h>
 
 /**
 * Predicts current/future position based on past position
@@ -34,13 +35,18 @@ public:
 
 private:
 	void cleanup();
+	bool calcSpeed(float dLat, float dLon, float dAlt, float dTime, float& speedMs);
+	void putSpeed(float speedMs);
+	float getSpeed();
 
 private:
 	const int m_iMillisAdvance;
 
-	PosWithTime m_lastPositions[2];
+	PosWithTime m_lastPositions[4];
 	int m_iNumLastPositions = 0;
 	const int m_lastPositionsSize = sizeof(m_lastPositions) / sizeof(PosWithTime);
+
+	FilterOnePole m_lpf;
 };
 
 #endif
