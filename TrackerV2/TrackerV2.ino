@@ -522,52 +522,54 @@ void loop()
 	bool bSignalFixLost = false;
 	bool bSignalBatteryLow = false;
 
-	// we do actual calculation only every 20ms
-	// it's not required to do it more often and it may however cause problems to calculate multiple times per milliseconds
-	// e.g. we would overflow the serial interface with debug data
-	static uint32_t msLastPosCalc = 0;
-
-	if ((status.mavlink_active = mavlink.getPos(lat, lon, alt)) 
-		&& millis() - msLastPosCalc >= 20)
+	if ((status.mavlink_active = mavlink.getPos(lat, lon, alt)))
 	{
-		msLastPosCalc = millis();
+		// we do actual calculation only every 20ms
+		// it's not required to do it more often and it may however cause problems to calculate multiple times per milliseconds
+		// e.g. we would overflow the serial interface with debug data
+		static uint32_t msLastPosCalc = 0;
 
-		auto adv = mavlink_advance.calc(PosCalc::Position(lat, lon, alt));
-
-		// advance calculator DEACTIVATED if line below is uncommented
-		//auto adv = PosCalc::Position(lat, lon, alt);
-
-		PosCalc::Difference diff;
-		if (status.gps_has_fix)
+		if (millis() - msLastPosCalc >= 20)
 		{
-			if (!bFullFix)
+			msLastPosCalc = millis();
+
+			auto adv = mavlink_advance.calc(PosCalc::Position(lat, lon, alt));
+
+			// advance calculator DEACTIVATED if line below is uncommented
+			//auto adv = PosCalc::Position(lat, lon, alt);
+
+			PosCalc::Difference diff;
+			if (status.gps_has_fix)
 			{
-				bSignalFullFix = bFullFix = true;
+				if (!bFullFix)
+				{
+					bSignalFullFix = bFullFix = true;
+				}
+
+				diff = PosCalc::calcDiff(PosCalc::Position(status.gps_lat, status.gps_lon, 0.f),
+					PosCalc::Position(adv.lat, adv.lon, adv.alt));
+
+				setPanDegrees(diff.bearingDeg);
+				setTiltDegrees(max(diff.elevationDeg, 0.f)); // we cannot tilt downwards
+
+				status.bearing_deg = diff.bearingDeg;
+				status.elevation_deg = diff.elevationDeg;
+
+				Serial.print("Full fix.");
 			}
 
-			diff = PosCalc::calcDiff(PosCalc::Position(status.gps_lat, status.gps_lon, 0.f),
-				PosCalc::Position(adv.lat, adv.lon, adv.alt));
+			status.mav_lat = lat;
+			status.mav_lon = lon;
+			status.mav_alt = alt;
 
-			setPanDegrees(diff.bearingDeg);
-			setTiltDegrees(max(diff.elevationDeg, 0.f)); // we cannot tilt downwards
-
-			status.bearing_deg = diff.bearingDeg;
-			status.elevation_deg = diff.elevationDeg;
-
-			Serial.print("Full fix.");
+			Serial.print("Millis: ");
+			Serial.println(millis());
+			Serial.print("GPS lat: "); Serial.print(status.gps_lat, 8); Serial.print(" MAV lat: "); Serial.print(lat, 8); Serial.print(" ADV lat: "); Serial.println(adv.lat, 8);
+			Serial.print("GPS lon: "); Serial.print(status.gps_lon, 8); Serial.print(" MAV lon: "); Serial.print(lon, 8); Serial.print(" ADV lon: "); Serial.println(adv.lon, 8);
+			Serial.print("GPS alt: "); Serial.print(status.gps_alt); Serial.print(" MAV alt: "); Serial.print(alt); Serial.print(" ADV alt: "); Serial.println(adv.alt, 8);
+			Serial.print("Bearing: "); Serial.print(diff.bearingDeg); Serial.print(" Elevation: "); Serial.println(diff.elevationDeg);
+			Serial.println("");
 		}
-
-		status.mav_lat = lat;
-		status.mav_lon = lon;
-		status.mav_alt = alt;
-
-		Serial.print("Millis: ");
-		Serial.println(millis());
-		Serial.print("GPS lat: "); Serial.print(status.gps_lat, 8); Serial.print(" MAV lat: "); Serial.print(lat, 8); Serial.print(" ADV lat: "); Serial.println(adv.lat, 8);
-		Serial.print("GPS lon: "); Serial.print(status.gps_lon, 8); Serial.print(" MAV lon: "); Serial.print(lon, 8); Serial.print(" ADV lon: "); Serial.println(adv.lon, 8);
-		Serial.print("GPS alt: "); Serial.print(status.gps_alt); Serial.print(" MAV alt: "); Serial.print(alt); Serial.print(" ADV alt: "); Serial.println(adv.alt, 8);
-		Serial.print("Bearing: "); Serial.print(diff.bearingDeg); Serial.print(" Elevation: "); Serial.println(diff.elevationDeg);
-		Serial.println("");
 	}
 	else if (bFullFix)
 	{
