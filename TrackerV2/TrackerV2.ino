@@ -1,4 +1,4 @@
-#include <MicroNMEA.h>
+#include <TinyGPS++.h>
 #include <quaternionFilters.h>
 #include <Timer-master\Timer.h>
 #include <SPI.h>
@@ -50,9 +50,9 @@
 #define I_SPEED 2.
 #define D_SPEED .2
 
-#define P_POS 1.4
-#define I_POS 0.01
-#define D_POS .001
+#define P_POS 20.
+#define I_POS 40.
+#define D_POS .01
 
 void onMotorPosition(float iPosition);
 
@@ -73,8 +73,7 @@ Bluetooth xfire(btserial, BT_CONNECT_PIN, BT_BINDSWITCH_PIN, true, showBTStatus,
 MavlinkProcessor mavlink;
 PosAdvanceEstimator mavlink_advance(500);	// calc position 500ms in advance
 HardwareSerial& gps = Serial1;
-char buffer[85];
-MicroNMEA nmea(buffer, sizeof(buffer));
+TinyGPSPlus nmea;
 PositionAverager<16> gps_avg;
 Buzzer buzzer(BUZZER_PIN);
 DampedServo tilt(TILT_SERVO_PIN, TILT_SERVO_HORIZONTAL_PWM, TILT_SERVO_VERTIAL_PWM);
@@ -93,6 +92,7 @@ struct SystemStatus
 	int bt_status = 0;
 	bool mavlink_active = false;
 	bool gps_has_fix = false;
+	int gps_num_sats = 0;
 	bool vbat_low = false;
 
 	float gps_lon = 0.0f;
@@ -114,6 +114,7 @@ struct SystemStatus
 			bt_status == comp.bt_status &&
 			mavlink_active == comp.mavlink_active &&
 			gps_has_fix == comp.gps_has_fix &&
+			gps_num_sats == comp.gps_num_sats &&
 			vbat_low == comp.vbat_low &&
 			mav_lon == comp.mav_lon &&
 			mav_lat == comp.mav_lat &&
@@ -261,10 +262,16 @@ void showStatus()
 					// gps fix
 					display.setCursor(0, 40);
 					display.print(F("GPS: "));
-					if (status.gps_has_fix)
-						display.print(F("OK"));
-					else
-						display.print(F("Acquiring"));
+					if (status.gps_has_fix) {
+						display.print(F("OK ("));
+						display.print(status.gps_num_sats);
+						display.print(F(")"));
+					}
+					else {
+						display.print(F("Acq ("));
+						display.print(status.gps_num_sats);
+						display.print(F(")"));
+					}
 				}
 			}
 		}
@@ -468,15 +475,20 @@ void loop()
 	if (gps.available()) {
 		char c = gps.read();
 
-		if (nmea.process(c))
+		if (nmea.encode(c))
 		{
-			if (nmea.isValid())
+			if (nmea.satellites.isValid())
+				status.gps_num_sats = nmea.satellites.value();
+
+			auto loc = nmea.location;
+
+			if (loc.isValid())
 			{
 				static float last_gps_lat = 0.f;
 				static float last_gps_lon = 0.f;
 
-				auto gps_lat = (float)nmea.getLatitude() / 1000000.0f;
-				auto gps_lon = (float)nmea.getLongitude() / 1000000.0f;
+				auto gps_lat = (float)loc.lat();
+				auto gps_lon = (float)loc.lng();
 				if (gps_lat != last_gps_lat || gps_lon != last_gps_lon)
 				{
 					last_gps_lat = gps_lat;
@@ -497,9 +509,8 @@ void loop()
 						status.gps_lat = gps_lat;
 						status.gps_lon = gps_lon;
 
-						long alt;
-						if (nmea.getAltitude(alt))
-							status.gps_alt = (float)alt / 1000.0f;
+						if (nmea.altitude.isValid())
+							status.gps_alt = (float)nmea.altitude.value();
 						status.gps_has_fix = true;
 
 						fMagDeclination = PosCalc::getMagDeclination(status.gps_lat, status.gps_lon);

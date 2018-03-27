@@ -26,14 +26,18 @@ void MotorWithSpeedCtrl::on10000usElapsed()
 
 void MotorWithSpeedCtrl::update()
 {
-	//Serial.print(this->measured_speed);
-	//Serial.print(" ");
-	//Serial.print(this->desired_speed);
-	//Serial.print(" ");
-	//Serial.print(this->output);
 	if (this->pid.Compute())
 	{
-		this->motor.setSpeed((int)output);
+		//Serial.print(this->measured_speed);
+		//Serial.print("-");
+		//Serial.print(this->desired_speed);
+		//Serial.print("=>");
+		//Serial.println(this->output);
+
+		if (abs(this->output) < 60.f)
+			this->output = 0.f;
+
+		this->motor.setSpeed((int)this->output);
 	}
 	motor.update();
 	//Serial.println();

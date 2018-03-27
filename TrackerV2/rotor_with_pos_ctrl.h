@@ -24,8 +24,18 @@ public:
 	void update();
 
 private:
-	inline double degToStep(float deg) { return deg * steps_per_revolution / 360.; }
-	inline double stepToDeg(float step) { return step * 360.f / steps_per_revolution; }
+	inline double degToStep(float deg) 
+	{ 
+		return deg * steps_per_revolution / 360.; 
+	}
+	inline double stepToDeg(float step) 
+	{ 
+		auto tmp = step * 360.f / steps_per_revolution; 
+		if (this->bPosCtrlActive)
+			return round(tmp);
+		else
+			return tmp;
+	}
 
 private:
 	MotorWithSpeedCtrl& motor;

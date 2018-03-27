@@ -13,7 +13,7 @@ RotorWithPosCtrl::RotorWithPosCtrl(MotorWithSpeedCtrl& motor,
 	double steps_per_revolution,
 	PositionCallback cb)
 	: motor(motor),
-	pid(&measured_pos, &output, &desired_pos, p, i, d, DIRECT),
+	pid(&measured_pos, &output, &desired_pos, p, i, d, P_ON_M, DIRECT),
 	cb(cb),
 steps_per_revolution(steps_per_revolution)
 {
@@ -28,7 +28,7 @@ void RotorWithPosCtrl::setPosition(double positionDegrees)
 {
 	this->bPosCtrlActive = true;
 
-	positionDegrees = normalizeAngle360d(positionDegrees);
+	positionDegrees = normalizeAngle360d(round(positionDegrees));
 
 	// we need to find out the nearest actual desired position
 	// our positions may already have accumulated many full rotations
@@ -70,16 +70,20 @@ void RotorWithPosCtrl::update()
 			this->cb(pos360);
 	}
 
-		//Serial.print(measured_pos);
-		//Serial.print("!=");
-		//Serial.print(desired_pos);
-		//Serial.print("=>");
-		//Serial.println(output);
-
 	if (this->bPosCtrlActive)
 	{
 		if (this->pid.Compute())
 		{
+			//Serial.print(measured_pos);
+			//Serial.print("!=");
+			//Serial.print(desired_pos);
+			//Serial.print("=>");
+			//Serial.println(output);
+
+			if (abs(this->output) < 20.f)
+				this->output = 0.f;
+
+
 			this->motor.setSpeed(this->degToStep(this->output));
 		}
 	}

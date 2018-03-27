@@ -99,7 +99,7 @@ private:
 
 	void displayStatus(const __FlashStringHelper* status);
 	void displayError(const __FlashStringHelper* err);
-	void onError(const __FlashStringHelper* err, int recoverTime = 3000);
+	void onError(const __FlashStringHelper* err, int recoverTime = 6000);
 
 private:
 	Stream& m_sserial;
