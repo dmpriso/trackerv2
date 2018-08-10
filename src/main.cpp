@@ -1,6 +1,6 @@
 #include <TinyGPS++.h>
 #include <quaternionFilters.h>
-#include <Timer-master\Timer.h>
+#include <Timer.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
@@ -27,7 +27,7 @@
 #define BT_LED_PIN 3
 #define TILT_SERVO_PIN 5
 #define TILT_SERVO_HORIZONTAL_PWM 1930
-#define TILT_SERVO_VERTIAL_PWM 1060
+#define TILT_SERVO_VERTIAL_PWM 1160
 #define LCD_SCLK_PIN 19
 #define LCD_DIN_PIN 20
 #define LCD_DC_PIN 21
@@ -48,13 +48,18 @@
 
 #define P_SPEED 4.
 #define I_SPEED 2.
-#define D_SPEED .2
+#define D_SPEED .3
 
-#define P_POS 20.
-#define I_POS 40.
-#define D_POS .01
+#define P_POS 8.
+#define I_POS 13.
+#define D_POS .2
 
+void showBTError(const __FlashStringHelper* err);
+void showBTStatus(const __FlashStringHelper* stat);
+void showBTConnectStatus(int connected);
 void onMotorPosition(float iPosition);
+bool selectBTPeer(const char* peername);
+void processBTData(char chr);
 
 Motor motor(PWM_PIN, DIR_PIN, ENC_PIN_1, ENC_PIN_2, DIR_REVERSE);
 MotorWithSpeedCtrl smotor(motor, P_SPEED, I_SPEED, D_SPEED);
